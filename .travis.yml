@@ -1,0 +1,30 @@
+# Travis requires sudo permissions on this build machine to execute docker commands
+sudo: required
+
+# Travis needs to install docker
+services:
+  - docker
+
+# Travis build docker image with the dev dockerfile (not the production one)
+before_install:
+  - docker build -t rbotla/react-test -f ./client/Dockerfile.dev ./client
+
+# Run tests on the docker build image. If there more tests you can append to the list of scripts.
+script:
+  - docker run -e CI=true rbotla/react-test npm test
+
+# After successful completion of tests, build docker images using production dockerfiles and push them to docker hub
+after_success:
+  - docker build -t rbotla/multi-client ./client
+  - docker build -t rbotla/multi-nginx ./nginx
+  - docker build -t rbotla/multi-server ./server
+  - docker build -t rbotla/multi-worker ./worker
+  # Login into DockerHub
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Push the images to docker hub
+  - docker push rbotla/multi-client
+  - docker push rbotla/multi-nginx
+  - docker push rbotla/multi-server
+  - docker push rbotla/multi-worker
+
+language: generic 
